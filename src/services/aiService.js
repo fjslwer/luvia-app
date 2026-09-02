@@ -13,8 +13,8 @@ export const askLoveAI = async (prompt, userProfile = {}) => {
     Tuyên bố miễn trừ: Chỉ đưa ra lời khuyên mang tính chiêm nghiệm, giải trí và thấu hiểu bản thân; không khẳng định đọc được suy nghĩ người khác hoặc phán đoán tương lai tuyệt đối.
   `;
 
-  // 依次尝试 2026 年标准 REST 模型 Endpoint
-  const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash"];
+  // 1. 优先尝试标准 stable 模型 gemini-1.5-flash
+  const modelsToTry = ["gemini-1.5-flash", "gemini-1.5-pro"];
 
   for (const modelName of modelsToTry) {
     try {
@@ -37,9 +37,12 @@ export const askLoveAI = async (prompt, userProfile = {}) => {
         const data = await response.json();
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text) return text;
+      } else {
+        const errJson = await response.json().catch(() => ({}));
+        console.warn(`Model ${modelName} returned status ${response.status}:`, errJson);
       }
     } catch (err) {
-      console.warn(`Model ${modelName} fetch failed:`, err);
+      console.warn(`Model ${modelName} fetch error:`, err);
     }
   }
 
