@@ -1,5 +1,6 @@
 const apiKey = process.env.REACT_APP_GEMINI_API_KEY || "";
 
+// 1. 流式输出（打字机效果，秒级响应）
 export const askLoveAIStream = async (prompt, userProfile = {}, onChunk) => {
   if (!apiKey) {
     onChunk("Chưa cấu hình API Key. Vui lòng thêm REACT_APP_GEMINI_API_KEY.");
@@ -8,7 +9,6 @@ export const askLoveAIStream = async (prompt, userProfile = {}, onChunk) => {
 
   const systemPrompt = `Bạn là LUVIA, người đồng hành tình yêu AI cho phụ nữ trẻ Việt Nam. Tên user: ${userProfile.name || "Linh"}. Phong cách: Ấm áp, tinh tế, thêm icon ♡, ✨. Trả lời ngắn gọn, đi thẳng vào tâm tư.`;
 
-  // 使用 streamGenerateContent 接口实现秒级首字响应
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?key=${apiKey}&alt=sse`;
 
   try {
@@ -20,7 +20,7 @@ export const askLoveAIStream = async (prompt, userProfile = {}, onChunk) => {
         contents: [{ role: "user", parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 500 // 限制长度，大幅提速
+          maxOutputTokens: 600
         }
       })
     });
@@ -45,10 +45,10 @@ export const askLoveAIStream = async (prompt, userProfile = {}, onChunk) => {
             const textChunk = json?.candidates?.[0]?.content?.parts?.[0]?.text;
             if (textChunk) {
               fullText += textChunk;
-              onChunk(fullText); // 实时回调，前端逐字更新
+              onChunk(fullText);
             }
           } catch (e) {
-            // 忽略分片解析中断的 SSE 空行
+            // ignore JSON parse exceptions for partial frames
           }
         }
       }
@@ -57,4 +57,13 @@ export const askLoveAIStream = async (prompt, userProfile = {}, onChunk) => {
     console.error("Stream error:", err);
     onChunk("LUVIA đang kết nối với các vì sao... Hãy thử lại sau một chút nhé ♡");
   }
+};
+
+// 2. 兼容原有的 askLoveAI 导出（防止 build 找不到函数报错）
+export const askLoveAI = async (prompt, userProfile = {}) => {
+  let resultText = "";
+  await askLoveAIStream(prompt, userProfile, (chunk) => {
+    resultText = chunk;
+  });
+  return resultText || "LUVIA đang kết nối với các vì sao... Hãy thử lại sau một chút nhé ♡";
 };
