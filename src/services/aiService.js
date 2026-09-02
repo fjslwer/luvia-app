@@ -13,39 +13,37 @@ export const askLoveAI = async (prompt, userProfile = {}) => {
     Tuyên bố miễn trừ: Chỉ đưa ra lời khuyên mang tính chiêm nghiệm, giải trí và thấu hiểu bản thân; không khẳng định đọc được suy nghĩ người khác hoặc phán đoán tương lai tuyệt đối.
   `;
 
-  // 兼顾 v1 与 v1beta 接口以及 2026 年标准模型名称的组合备选列表
-  const endpoints = [
-    `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-    `https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=${apiKey}`
-  ];
+  // 1. 适配 2026 最新 REST 端点
+  const endpoint = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
 
-  for (const url of endpoints) {
-    try {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: `${systemPrompt}\n\nNgười dùng hỏi: ${prompt}` }]
-            }
-          ]
-        })
-      });
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        // 关键：AQ. 格式 Key 必须通过此 Header 传递
+        "x-goog-api-key": apiKey 
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: `${systemPrompt}\n\nNgười dùng hỏi: ${prompt}` }]
+          }
+        ]
+      })
+    });
 
-      if (response.ok) {
-        const data = await response.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return text;
-      }
-    } catch (err) {
-      console.warn("Endpoint fetch failed, trying next fallback...", err);
+    if (response.ok) {
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) return text;
+    } else {
+      const errData = await response.json().catch(() => ({}));
+      console.error("Gemini Request Error:", response.status, errData);
     }
+  } catch (err) {
+    console.error("Network Exception:", err);
   }
 
   return "LUVIA đang kết nối với các vì sao... Hãy thử lại sau một chút nhé ♡";
